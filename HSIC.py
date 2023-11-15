@@ -1,4 +1,7 @@
 """
+Based on the code from https://github.com/amber0309/HSIC/blob/master/HSIC.py
+"""
+"""
 python implementation of Hilbert Schmidt Independence Criterion
 hsic_gam implements the HSIC test using a Gamma approximation
 Python 2.7.12
