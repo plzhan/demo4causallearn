@@ -3,6 +3,7 @@
 # Product_name:  PyCharm
 # File_name:     SELF
 # @Time:         20:02  2023/11/14
+from copy import deepcopy
 import numpy as np
 from xgboost import XGBRegressor
 from sklearn.datasets import load_iris
@@ -72,6 +73,14 @@ class Graph(object):
     def __init__(self, n):
         self.graph = np.zeros((n, n))
 
+    def check_edge(self, x, y):
+        if self.graph[x, y] == 1:
+            return 1
+        if self.graph[x, y] == 0:
+            return 0
+        if self.graph[x, y] == -1:
+            return -1
+
     def set_edge(self, x, y):
         assert x != y
         self.graph[x, y] = 1
@@ -101,6 +110,8 @@ class SELF(object):
         self.Likelihood = [0 for i in range(self.m)]
         self.is_split = is_split
         self.parent_cache = ParentCache()
+        self.max_likelihood_graph = self.graph.graph.copy()
+        self.neighbor_graphs = []
 
     def compute_sum_log_i(self, graph, i):
         parent = graph.get_x_parent(i)
@@ -148,8 +159,26 @@ class SELF(object):
         di = len(function.get_score(importance_type='weight').keys())
         return di * np.log(self.m) / self.m / 2
 
-    def search_neighbor_graph(self):
+    def search_neighbor_graphs(self, graph: Graph):
+        for i in range(self.m):
+            for j in range(self.m):
+                if i != j:
+                    graph_copy = deepcopy(graph)
+                    if graph_copy.check_edge(i, j) == 0:
+                        graph_copy.set_edge(i, j)
+                        self.neighbor_graphs.append(graph_copy.graph.copy())
+                        graph_copy.remove_edge(i, j)
+                        continue
 
+                    if graph_copy.check_edge(i, j) == 1:
+                        graph_copy.reverse_edge(i, j)
+                        continue
+
+                    if graph_copy.check_edge(i, j) == -1:
+                        pass
+        """
+        haven't completed
+        """
 
     def init_self(self):
 
