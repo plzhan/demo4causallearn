@@ -73,46 +73,16 @@ def multi_repetition(times, repetition_num, b, q, is_visualized, forward, backwa
 
 
 
-# The first panel
-is_visualized = False
-b = 0
-nums = np.arange(0.5, 2.001, 0.05)  # q
-proportion = []
-repetition_num = 100
-with ThreadPoolExecutor(max_workers=20) as executor:
-    start = time.time()
-    for q in nums:
-        q = round(q, 3)
-        times = 1
-        forward = 0
-        backward = 0
-        future = executor.submit(multi_repetition, times, repetition_num, b, q, is_visualized, forward, backward)
-    with tqdm(total=100, desc='Progress', unit='iteration') as pbar:
-        while not future.done():
-            pbar.update(1)
-            time.sleep(0.1)
-
-print(f">> 执行用时: {time.time()-start}s")
-plt.figure()
-proportion.sort(key=lambda x: x[0])
-plt.plot(nums, np.array(proportion)[:, 1:2], 'k', label='correct')
-plt.plot(nums, np.array(proportion)[:, 2:], 'r', label='reverse')
-plt.xlabel('q')
-plt.ylabel('$p_{accept}$')
-plt.title(f'b = 0')
-plt.legend()
-plt.savefig('b0_q05-20.jpg', dpi=200)
-plt.show()
-
-#
+# # The first panel
 # is_visualized = False
-# q = 1
-# nums = np.arange(-1, 1.1, 0.1)
+# b = 0
+# nums = np.arange(0.5, 2.001, 0.05)  # q
 # proportion = []
 # repetition_num = 100
 # with ThreadPoolExecutor(max_workers=20) as executor:
-#     for b in nums:
-#         b = round(b, 3)
+#     start = time.time()
+#     for q in nums:
+#         q = round(q, 3)
 #         times = 1
 #         forward = 0
 #         backward = 0
@@ -122,14 +92,44 @@ plt.show()
 #             pbar.update(1)
 #             time.sleep(0.1)
 #
+# print(f">> 执行用时: {time.time()-start}s")
 # plt.figure()
 # proportion.sort(key=lambda x: x[0])
 # plt.plot(nums, np.array(proportion)[:, 1:2], 'k', label='correct')
 # plt.plot(nums, np.array(proportion)[:, 2:], 'r', label='reverse')
-# plt.xlabel('b')
+# plt.xlabel('q')
 # plt.ylabel('$p_{accept}$')
-# plt.title(f'q = 1')
+# plt.title(f'b = 0')
 # plt.legend()
-# # plt.show()
-# plt.savefig('q1_bn1-1.jpg', dpi=200)
+# plt.savefig('b0_q05-20.jpg', dpi=200)
 # plt.show()
+
+#
+is_visualized = False
+q = 1
+nums = np.arange(-1, 1.1, 0.05)
+proportion = []
+repetition_num = 100
+with ThreadPoolExecutor(max_workers=20) as executor:
+    for b in nums:
+        b = round(b, 3)
+        times = 1
+        forward = 0
+        backward = 0
+        future = executor.submit(multi_repetition, times, repetition_num, b, q, is_visualized, forward, backward)
+    with tqdm(total=100, desc='Progress', unit='iteration') as pbar:
+        while not future.done():
+            pbar.update(1)
+            time.sleep(0.1)
+
+plt.figure()
+proportion.sort(key=lambda x: x[0])
+plt.plot(nums, np.array(proportion)[:, 1:2], 'k', label='correct')
+plt.plot(nums, np.array(proportion)[:, 2:], 'r', label='reverse')
+plt.xlabel('b')
+plt.ylabel('$p_{accept}$')
+plt.title(f'q = 1')
+plt.legend()
+# plt.show()
+plt.savefig('q1_bn1-1.jpg', dpi=200)
+plt.show()
