@@ -27,14 +27,9 @@ def create_simulated_data(m=300, b=1, q=1, is_visualized=True):
         # y = b * np.exp(x)
         return y
 
-    # 定义形状参数
-    # beta_values = np.linspace(1, 3, 30)
-    q += 1
     # 生成具有不同峰度的随机数
-    # random_nums4x = [stats.gennorm.rvs(beta, loc=0, scale=1, size=1000, random_state=42) for beta in beta_values]
-    # random_nums4x = stats.gennorm.rvs(q, loc=0, scale=1, size=1000, random_state=42)
     x = np.random.normal(0, 1, size=(m, 1))
-    n = np.random.normal(0, 1, size=(m, 1))
+    n = np.random.normal(0, 1, size=(m, 1)) * 0.01
     absolute_value_x = np.where(x > 0, 1, -1)
     absolute_value_n = np.where(n > 0, 1, -1)
     x = np.abs(x) ** q
@@ -58,7 +53,7 @@ def create_simulated_data(m=300, b=1, q=1, is_visualized=True):
 
 def get_an_estimate_model(data, is_split=True, to_ward="forward", is_visualized=True):
     kernel = C(1.0, (1e-4, 1e4)) * RBF(10, (1e-3, 1e3)) + WhiteKernel(0.1, (1e-10, 1e+1))
-    gp = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=5, random_state=42)
+    gp = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=0, random_state=42)
     if is_split:
         X_train, X_test, y_train, y_test = train_test_split(data[:, :1], data[:, 1:], shuffle=True, test_size=.3,
                                                             random_state=42)
@@ -158,32 +153,34 @@ def multi_repetition(times, repetition_num, b, q, is_visualized, forward, backwa
     proportion.append([q, round(forward/(forward+0.00001), 3), round(backward/(forward+0.00001), 3)])
 
 
-# # The first panel
-# is_visualized = False
-# b = 0
-# nums = np.arange(0.5, 2.001, 0.05)  # q
-# proportion = []
-# repetition_num = 100
-# with ThreadPoolExecutor(max_workers=20) as executor:
-#     start = time.time()
-#     for q in nums:
-#         q = round(q, 3)
-#         times = 1
-#         forward = 0
-#         backward = 0
-#         future = executor.submit(multi_repetition, times, repetition_num, b, q, is_visualized, forward, backward)
-#
-# print(f">> 执行用时: {time.time()-start}s")
-# plt.figure()
-# proportion.sort(key=lambda x: x[0])
-# plt.plot(nums, np.array(proportion)[:, 1:2], 'k', label='correct')
-# plt.plot(nums, np.array(proportion)[:, 2:], 'r', label='reverse')
-# plt.xlabel('q')
-# plt.ylabel('$p_{accept}$')
-# plt.title(f'b = 0')
-# plt.legend()
-# plt.show()
-# plt.savefig('b0_q05-20.jpg', dpi=200)
+# The first panel
+is_visualized = False
+b = 0
+nums = np.arange(0.5, 2.001, 0.05)  # q
+proportion = []
+repetition_num = 100
+with ThreadPoolExecutor(max_workers=20) as executor:
+    start = time.time()
+    for q in nums:
+        q = round(q, 3)
+        times = 1
+        forward = 0
+        backward = 0
+        future = executor.submit(multi_repetition, times, repetition_num, b, q, is_visualized, forward, backward)
+    with tqdm(total=None, desc='Progress', unit='iteration') as pbar:
+        while not future.done():
+            pbar.update(1)
+            time.sleep(0.1)
+plt.figure()
+proportion.sort(key=lambda x: x[0])
+plt.plot(nums, np.array(proportion)[:, 1:2], 'k', label='correct')
+plt.plot(nums, np.array(proportion)[:, 2:], 'r', label='reverse')
+plt.xlabel('q')
+plt.ylabel('$p_{accept}$')
+plt.title(f'b = 0')
+plt.legend()
+plt.savefig('b0_q05-20.jpg', dpi=200)
+plt.show()
 
 # The second panel
 is_visualized = False
@@ -198,7 +195,7 @@ with ThreadPoolExecutor(max_workers=20) as executor:
         forward = 0
         backward = 0
         future = executor.submit(multi_repetition, times, repetition_num, b, q, is_visualized, forward, backward)
-    with tqdm(total=100, desc='Progress', unit='iteration') as pbar:
+    with tqdm(total=None, desc='Progress', unit='iteration') as pbar:
         while not future.done():
             pbar.update(1)
             time.sleep(0.1)
