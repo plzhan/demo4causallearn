@@ -5,7 +5,7 @@
 # @Time:         18:58  2023/11/2
 import warnings
 
-warnings.filterwarnings("ignore")
+# warnings.filterwarnings("ignore")
 from copy import deepcopy
 from tqdm import tqdm
 import threading
@@ -51,7 +51,7 @@ def create_simulated_data(m=300, b=1, q=1, is_visualized=True):
 
 
 def get_an_estimate_model(data, is_split=False, to_ward="forward", is_visualized=True):
-    kernel = C(1.0, (1e-4, 1e4)) * RBF(10, (1e-3, 1e3)) + WhiteKernel(0.1, (1e-10, 1e+1))
+    kernel = C(1.0, (1e-3, 1e3)) * RBF(1.0, (1e-2, 1e2)) + WhiteKernel(0.1, (1e-10, 1e+1))
     gp = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=0)
     if is_split:
         X_train, X_test, y_train, y_test = train_test_split(data[:, :1], data[:, 1:], shuffle=True, test_size=.2)
@@ -151,7 +151,7 @@ def multi_repetition(times, repetition_num, b, q, is_visualized, forward, backwa
     proportion.append([q, round(forward/(repetition_num), 3), round(backward/(repetition_num), 3)])
 
 
-repetition_num = 100
+repetition_num = 20
 
 # The first panel
 is_visualized = False
