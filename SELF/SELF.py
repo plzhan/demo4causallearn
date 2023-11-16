@@ -6,9 +6,7 @@
 from copy import deepcopy
 import numpy as np
 from xgboost import XGBRegressor
-from sklearn.datasets import load_iris
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score
 from sklearn.neighbors import KernelDensity
 from tqdm import tqdm
 import graphviz
