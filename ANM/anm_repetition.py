@@ -168,7 +168,7 @@
 # plt.title(f'b = 0')
 # plt.legend()
 # plt.show()
-# plt.savefig('b0_q05-20.jpg', dpi=200)
+# plt.savefig('b0_q05-20_perfect.jpg', dpi=200)
 # # print("The result is:", result)
 #
 # # The second panel

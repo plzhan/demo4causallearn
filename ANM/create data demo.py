@@ -56,24 +56,40 @@ import numpy as np
 from tqdm import tqdm
 import scipy.stats as stats
 import matplotlib.pyplot as plt
-import matplotlib
-matplotlib.use('TkAgg')
+def create_simulated_data(m=800, b=1, q: int or np.array = 1, is_visualized=True):
 
-# 定义形状参数
-beta_values = np.linspace(1, 3, 30)
+    # 生成具有不同峰度的随机数
+    x = np.random.normal(0, 1, size=(m, 1))
+    absolute_value_x = np.where(x > 0, 1, -1)
+    bins = np.linspace(-4, 4, 100)
+    for qi in q:
+        xi = np.abs(x) ** qi * absolute_value_x
+        plt.hist(xi, bins=bins, alpha=0.3, label=f'q={round(qi, 3)}')
+        plt.legend(loc='upper right', bbox_to_anchor=(1, 1), prop={'size': 10}, frameon=False)
+        plt.ylim(0, 60)
+    plt.title("sub2super-Gaussian_dist")
+    plt.savefig("sub2super-Gaussian_dist.jpg", dpi=200)
+    plt.show()
 
-# 生成具有不同峰度的随机数
-random_numbers = [stats.gennorm.rvs(beta, loc=0, scale=1, size=1000, random_state=42) for beta in beta_values]
-plt.figure(figsize=(10, 9))
-# 创建直方图
-for i, numbers in enumerate(random_numbers):
-    # print(len(numbers))# 定义箱子边缘
-    bins = np.linspace(-8, 8, 50)
-    plt.hist(numbers, bins=bins, alpha=0.3, label=f'beta={round(beta_values[i], 2)}')
+q = np.arange(0.5, 2.001, 0.3)
 
-# 添加图例和标题
-plt.legend(loc='upper right', bbox_to_anchor=(1, 1), prop={'size': 10}, frameon=True)
-plt.title('Histogram of Random Numbers with Different Kurtosis')
+create_simulated_data(q=q)
 
-# 显示图形
-plt.show()
+# # 定义形状参数
+# beta_values = np.linspace(1, 3, 30)
+#
+# # 生成具有不同峰度的随机数
+# random_numbers = [stats.gennorm.rvs(beta, loc=0, scale=1, size=1000, random_state=42) for beta in beta_values]
+# plt.figure(figsize=(10, 9))
+# # 创建直方图
+# for i, numbers in enumerate(random_numbers):
+#     # print(len(numbers))# 定义箱子边缘
+#     bins = np.linspace(-8, 8, 50)
+#     plt.hist(numbers, bins=bins, alpha=0.3, label=f'beta={round(beta_values[i], 2)}')
+#
+# # 添加图例和标题
+# plt.legend(loc='upper right', bbox_to_anchor=(1, 1), prop={'size': 10}, frameon=True)
+# plt.title('Histogram of Random Numbers with Different Kurtosis')
+#
+# # 显示图形
+# plt.show()

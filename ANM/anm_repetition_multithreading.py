@@ -19,7 +19,6 @@ from sklearn.model_selection import train_test_split
 from Experiments.HSIC import hsic_gam
 from concurrent.futures import ThreadPoolExecutor
 
-np.random.seed(42)
 # create datas
 def create_simulated_data(m=300, b=1, q=1, is_visualized=True):
     def f(x):
@@ -29,7 +28,7 @@ def create_simulated_data(m=300, b=1, q=1, is_visualized=True):
 
     # 生成具有不同峰度的随机数
     x = np.random.normal(0, 1, size=(m, 1))
-    n = np.random.normal(0, 1, size=(m, 1)) * 0.01
+    n = np.random.normal(0, 1, size=(m, 1))
     absolute_value_x = np.where(x > 0, 1, -1)
     absolute_value_n = np.where(n > 0, 1, -1)
     x = np.abs(x) ** q
@@ -51,12 +50,11 @@ def create_simulated_data(m=300, b=1, q=1, is_visualized=True):
     return data_set
 
 
-def get_an_estimate_model(data, is_split=True, to_ward="forward", is_visualized=True):
+def get_an_estimate_model(data, is_split=False, to_ward="forward", is_visualized=True):
     kernel = C(1.0, (1e-4, 1e4)) * RBF(10, (1e-3, 1e3)) + WhiteKernel(0.1, (1e-10, 1e+1))
-    gp = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=0, random_state=42)
+    gp = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=0)
     if is_split:
-        X_train, X_test, y_train, y_test = train_test_split(data[:, :1], data[:, 1:], shuffle=True, test_size=.2,
-                                                            random_state=42)
+        X_train, X_test, y_train, y_test = train_test_split(data[:, :1], data[:, 1:], shuffle=True, test_size=.2)
     else:
         X_train, y_train = data[:, :1], data[:, 1:]
     # fit model
@@ -93,7 +91,7 @@ def get_an_estimate_model(data, is_split=True, to_ward="forward", is_visualized=
     return n_hat, X
 
 
-def ANM(data_, is_split=False, is_visualized=True):
+def ANM(data_, is_split=True, is_visualized=True):
     """
     this function is used as a model(ANM) to discovery the causality between x and y
     1, test whether x and y are statistically independent if not
@@ -144,21 +142,22 @@ def multi_repetition(times, repetition_num, b, q, is_visualized, forward, backwa
     # print("表示我正在运行，", b, q)
     while times <= repetition_num:
         dataset = create_simulated_data(b=b, q=q, is_visualized=is_visualized)
-        result = ANM(dataset, is_split=True, is_visualized=is_visualized)
+        result = ANM(dataset, is_split=False, is_visualized=is_visualized)
         if "forward" in result:
             forward += 1
         if "backward" in result:
             backward += 1
         times += 1
-    proportion.append([q, round(forward/(forward+0.00001), 3), round(backward/(forward+0.00001), 3)])
+    proportion.append([q, round(forward/(repetition_num), 3), round(backward/(repetition_num), 3)])
 
+
+repetition_num = 100
 
 # The first panel
 is_visualized = False
 b = 0
-nums = np.arange(0.5, 2.001, 0.05)  # q
+nums = np.arange(0.5, 2.001, 0.1)  # q
 proportion = []
-repetition_num = 100
 with ThreadPoolExecutor(max_workers=20) as executor:
     start = time.time()
     for q in nums:
@@ -183,11 +182,9 @@ plt.savefig('b0_q05-20.jpg', dpi=200)
 plt.show()
 
 # The second panel
-is_visualized = False
 q = 1
 nums = np.arange(-1, 1.1, 0.1)
 proportion = []
-repetition_num = 100
 with ThreadPoolExecutor(max_workers=20) as executor:
     for b in nums:
         b = round(b, 3)
