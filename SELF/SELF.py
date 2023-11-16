@@ -10,7 +10,7 @@ from sklearn.datasets import load_iris
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 from sklearn.neighbors import KernelDensity
-
+from tqdm import tqdm
 
 class FunctionSet(object):
     def __init__(self):
@@ -63,7 +63,10 @@ class ParentCache(FunctionSet):
 
     def check_pi_in_i(self, i, pi: set):
         assert isinstance(pi, set), "TypeError: type of value should be set"
-        return f'{pi}' in self.F[f'{i}']
+        try:
+            return f'{pi}' in self.F[f'{i}']
+        except:
+            return False
 
     def get_di(self, key):
         pass
@@ -94,15 +97,15 @@ class Graph(object):
         self.graph[x, y], self.graph[y, x] = self.graph[y, x], self.graph[x, y]
 
     def get_x_parent(self, x):
-        index = np.where(self.graph[x, :] == 1)[0]
+        index = np.where(self.graph[x, :] == -1)[0]
         index = index.tolist()
-        return index if index != [] else None
+        return index if index != [] else []
 
 
 class SELF(object):
     def __init__(self, dataset, is_split=True):
         self.dataset = dataset
-        self.m = len(dataset)
+        self.n, self.m = dataset.shape[0], dataset.shape[1]
         self.functionSet = FunctionSet()
         self.graph = Graph(self.m)  # max-likelihood
         self.likelihood = 0
@@ -113,20 +116,21 @@ class SELF(object):
 
     def compute_sum_log_i(self, graph: Graph, i):
         parent = graph.get_x_parent(i)
-        bicterm = 0
-        # 如果是没有父节点
+        n_parent = len(parent)
+        oi = self.dataset[:, i][:, None]
+        di = 0  # 无父节点的时候没有模型就没有模型复杂度
+
         if self.parent_cache.check_pi_in_i(i, set(parent)):
             return self.parent_cache.get_i_pi_sum_log(i, set(parent))
 
-        if not parent:  # 初始化
+        if n_parent == 0:  # 初始化
             # 那就当前节点的数值进行计算L
             parent = [i]
-            Ei = self.dataset[:, [parent]]
+            Ei = self.dataset[:, parent]
+
         # 有父亲节点就要召唤回归器了
         else:
             function_i = self.get_xgboost_model()
-
-            oi = self.dataset[:, i][:, None]
             parenti = self.dataset[:, parent]
             if self.is_split:
                 parenti_train, parenti_test, oi_train, oi_test = train_test_split(parenti, oi, test_size=0.2,
@@ -136,29 +140,37 @@ class SELF(object):
                 oi_train = oi
 
             function_i.fit(parenti_train, oi_train)
-            Fi = function_i.predict(parenti)
+            Fi = function_i.predict(parenti)[:, None]
             Ei = oi - Fi
-            bicterm = self.compute_bic(function_i)
+            di = self.compute_model_complexity(function_i, n_parent)
 
         Pri = self.get_kernel_density_model(Ei)
-        likelihood = np.sum(Pri) / self.m - bicterm
+        bicterm = di * np.log(self.n) / self.n / 2
+
+        A, B = np.sum(Pri) / self.n, bicterm
+        # print("\nPri:", A, "bic:", B)
+        likelihood = A - B
         self.parent_cache[i] = set(parent)
         self.parent_cache.store_pi_sum_log(i, set(parent), likelihood)
 
         return likelihood
+
+    def compute_model_complexity(self, function: XGBRegressor, n_parent):
+        num_estimator = function.n_estimators
+        num_leaves = sum(1 for tree in function.get_booster().get_dump() for i in tree.split(',') if 'leaf' in i)
+        di = num_leaves * num_estimator + n_parent
+        return di
 
     def compute_graph_likelihood(self, graph: Graph):
         n_nodes = self.m
         tt_likelihood = 0
         # functions = []
         for i in range(n_nodes):
+            # print(i)
             tt_likelihood += self.compute_sum_log_i(graph, i)
+            # print("\n", tt_likelihood)
             # functions.append(function_i)
         return tt_likelihood
-
-    def compute_bic(self, function):
-        di = len(function.get_score(importance_type='weight').keys())
-        return di * np.log(self.m) / self.m / 2
 
     def search_neighbor_graphs(self, graph: np.array):
         neighbor_graphs = []
@@ -187,28 +199,34 @@ class SELF(object):
         return neighbor_graphs
 
     def hill_climbing_based_causal_structure_search(self):
-        self.likelihood = self.compute_graph_likelihood(self.graph)
-        while True:
-            self.neighbor_graphs = self.search_neighbor_graphs(self.graph.graph)
-            likelihood_max_iter = [0, 0]
-            for i, graph_i in enumerate(self.neighbor_graphs):
-                likelihood = self.compute_graph_likelihood(Graph(graph_i))
-                likelihood_max_iter = [i, likelihood] if likelihood > likelihood_max_iter else likelihood_max_iter
 
+        pbar = tqdm(total=None)
+        pbar.set_description(desc=">> Compute Old Graph's Likelihood...")
+        self.likelihood = self.compute_graph_likelihood(self.graph)
+        pbar.set_description(
+            desc="Old likelihood: L = " + str(round(self.likelihood, 3)) + "\n>> Start Hill Climbing...")
+
+        Stage = 0
+        while True:
+            Stage += 1
+            pbar.set_description(desc=f"\n==============Stage: {Stage}==============")
+            self.neighbor_graphs = self.search_neighbor_graphs(self.graph.graph)
+            pbar.set_description(desc="\n>> Found A Group of Neighbor Graphs!")
+            likelihood_max_iter = [0, self.likelihood]
+            for i, graph_i in enumerate(self.neighbor_graphs):
+                pbar.set_description(desc=f"\n>> Computing Neighbor Graph {i}")
+                likelihood = self.compute_graph_likelihood(Graph(graph_i))
+                likelihood_max_iter = [i, likelihood] if likelihood > likelihood_max_iter[1] else likelihood_max_iter
             if self.likelihood < likelihood_max_iter[1]:
+                pbar.set_description(desc="\n>> Larger likelihood: L = " + str(round(likelihood_max_iter[1], 3)))
+                print("\n>>>>>> Found larger likelihood: L = " + str(round(likelihood_max_iter[1], 3)), " <<<<<<")
                 self.likelihood = likelihood_max_iter[1]
                 self.graph.graph = self.neighbor_graphs[likelihood_max_iter[0]]
             else:
                 break
 
-
-
-
-
-
-
     def get_xgboost_model(self):
-        model = XGBRegressor()
+        model = XGBRegressor(n_estimators=12)
         return model
 
     def silverman_bandwidth(self, xi):
@@ -222,3 +240,20 @@ class SELF(object):
         kde = KernelDensity(bandwidth=bw, kernel='gaussian')
         kde.fit(Ei)
         return kde.score_samples(Ei)
+
+
+if __name__ == '__main__':
+    # x->y->z linear data
+    np.random.seed(0)
+    x = np.random.normal(size=4000)
+    y = 3 * x + np.random.uniform(-1, 1, size=4000) * 0.1
+    z = 3 * y + np.random.uniform(-1, 1, size=4000) * 0.1
+    z1 = 4 * y + np.random.uniform(-1, 1, size=4000) * 0.1
+
+    data = np.column_stack((x, y, z, z1))
+
+    SELF_model = SELF(dataset=data, is_split=True)
+    SELF_model.hill_climbing_based_causal_structure_search()
+    print("\nRESULT:")
+    print(SELF_model.graph.graph)
+
