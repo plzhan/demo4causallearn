@@ -150,8 +150,12 @@ class SELF(object):
             di = self.compute_model_complexity(function_i, n_parent)
 
         Pri = self.get_kernel_density_model(Ei)
+        # 此处 / self.n
+        # 求样本平均的操作论文没说，Based on the code from https://github.com/DMIRLAB-Group/SELF/blob/master/R/fast_hill_climb.R#L107
         bicterm = di * np.log(self.n) / self.n / 2
 
+        # 此处 / self.n
+        # 求样本平均的操作论文没说，Based on the code from https://github.com/DMIRLAB-Group/SELF/blob/master/R/fast_hill_climb.R#L107
         A, B = np.sum(Pri) / self.n, bicterm
         # print("\nPri:", A, "bic:", B)
         likelihood = A - B
