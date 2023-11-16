@@ -11,8 +11,13 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 from sklearn.neighbors import KernelDensity
 from tqdm import tqdm
+import graphviz
 
 class FunctionSet(object):
+    """
+    version 1.x 版本 没有返回Function(每个结点父类的模型)
+    有空时后续会加上
+    """
     def __init__(self):
         self.F = dict()
 
@@ -241,6 +246,23 @@ class SELF(object):
         kde.fit(Ei)
         return kde.score_samples(Ei)
 
+def draw_graph(adj_matrix):
+    dot = graphviz.Digraph(comment='The Round Table')
+
+    n = len(adj_matrix)  # number of nodes
+    # Create nodes
+    for i in range(n):
+        dot.node(str(i))
+
+    # Create edges
+    for i in range(n):
+        for j in range(n):
+            if adj_matrix[i][j] == 1:  # there is a directed edge from i to j
+                dot.edge(str(i), str(j))
+
+    # Render the graph
+    dot.format = 'png'
+    dot.render('output_graph', view=True)
 
 if __name__ == '__main__':
     # x->y->z linear data
@@ -248,7 +270,7 @@ if __name__ == '__main__':
     x = np.random.normal(size=4000)
     y = 3 * x + np.random.uniform(-1, 1, size=4000) * 0.1
     z = 3 * y + np.random.uniform(-1, 1, size=4000) * 0.1
-    z1 = 4 * y + np.random.uniform(-1, 1, size=4000) * 0.1
+    z1 = 4 * x + np.random.uniform(-1, 1, size=4000) * 0.1
 
     data = np.column_stack((x, y, z, z1))
 
@@ -256,4 +278,4 @@ if __name__ == '__main__':
     SELF_model.hill_climbing_based_causal_structure_search()
     print("\nRESULT:")
     print(SELF_model.graph.graph)
-
+    draw_graph(SELF_model.graph.graph)
