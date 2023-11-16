@@ -58,11 +58,11 @@ class ParentCache(FunctionSet):
         return self.F[f'{i}'][f'{pi}']
 
     def store_pi_sum_log(self, i, pi: set, sum_log):
-        assert type(pi) is set, "TypeError: type of value should be set"
+        assert isinstance(pi, set), "TypeError: type of value should be set"
         self.F[f'{i}'][f'{pi}'] = sum_log
 
     def check_pi_in_i(self, i, pi: set):
-        assert type(pi) is set, "TypeError: type of value should be set"
+        assert isinstance(pi, set), "TypeError: type of value should be set"
         return f'{pi}' in self.F[f'{i}']
 
     def get_di(self, key):
@@ -70,16 +70,14 @@ class ParentCache(FunctionSet):
 
 
 class Graph(object):
-    def __init__(self, n):
-        self.graph = np.zeros((n, n))
+    def __init__(self, n: int or np.array):
+        if isinstance(n, int):
+            self.graph = np.zeros((n, n))
+        else:
+            self.graph = n
 
     def check_edge(self, x, y):
-        if self.graph[x, y] == 1:
-            return 1
-        if self.graph[x, y] == 0:
-            return 0
-        if self.graph[x, y] == -1:
-            return -1
+        return self.graph[x, y]
 
     def set_edge(self, x, y):
         assert x != y
@@ -106,20 +104,19 @@ class SELF(object):
         self.dataset = dataset
         self.m = len(dataset)
         self.functionSet = FunctionSet()
-        self.graph = Graph(self.m)
-        self.Likelihood = [0 for i in range(self.m)]
+        self.graph = Graph(self.m)  # max-likelihood
+        self.likelihood = 0
+        self.likelihood_star = 0
         self.is_split = is_split
         self.parent_cache = ParentCache()
-        self.max_likelihood_graph = self.graph.graph.copy()
         self.neighbor_graphs = []
 
-    def compute_sum_log_i(self, graph, i):
+    def compute_sum_log_i(self, graph: Graph, i):
         parent = graph.get_x_parent(i)
         bicterm = 0
-        function_i = None
         # 如果是没有父节点
         if self.parent_cache.check_pi_in_i(i, set(parent)):
-            return self.parent_cache.get_i_pi_sum_log(i, set(parent)), function_i
+            return self.parent_cache.get_i_pi_sum_log(i, set(parent))
 
         if not parent:  # 初始化
             # 那就当前节点的数值进行计算L
@@ -137,52 +134,78 @@ class SELF(object):
             else:
                 parenti_train = parenti
                 oi_train = oi
+
             function_i.fit(parenti_train, oi_train)
             Fi = function_i.predict(parenti)
             Ei = oi - Fi
             bicterm = self.compute_bic(function_i)
+
         Pri = self.get_kernel_density_model(Ei)
         likelihood = np.sum(Pri) / self.m - bicterm
         self.parent_cache[i] = set(parent)
         self.parent_cache.store_pi_sum_log(i, set(parent), likelihood)
 
-        return likelihood, function_i
+        return likelihood
 
-    def compute_graph_likelihood(self, graph):
+    def compute_graph_likelihood(self, graph: Graph):
         n_nodes = self.m
         tt_likelihood = 0
+        # functions = []
         for i in range(n_nodes):
             tt_likelihood += self.compute_sum_log_i(graph, i)
+            # functions.append(function_i)
         return tt_likelihood
 
     def compute_bic(self, function):
         di = len(function.get_score(importance_type='weight').keys())
         return di * np.log(self.m) / self.m / 2
 
-    def search_neighbor_graphs(self, graph: Graph):
-        for i in range(self.m):
-            for j in range(self.m):
+    def search_neighbor_graphs(self, graph: np.array):
+        neighbor_graphs = []
+        for i in range(self.m-1):
+            for j in range(i+1, self.m):
                 if i != j:
-                    graph_copy = deepcopy(graph)
+                    graph_copy = Graph(self.m)
+                    graph_copy.graph = graph
                     if graph_copy.check_edge(i, j) == 0:
                         graph_copy.set_edge(i, j)
-                        self.neighbor_graphs.append(graph_copy.graph.copy())
+                        neighbor_graphs.append(graph_copy.graph.copy())
                         graph_copy.remove_edge(i, j)
                         continue
 
                     if graph_copy.check_edge(i, j) == 1:
                         graph_copy.reverse_edge(i, j)
+                        neighbor_graphs.append(graph_copy.graph.copy())
+                        graph_copy.reverse_edge(i, j)
                         continue
 
                     if graph_copy.check_edge(i, j) == -1:
-                        pass
-        """
-        haven't completed
-        """
+                        graph_copy.remove_edge(i, j)
+                        neighbor_graphs.append(graph_copy.graph.copy())
+                        graph_copy.set_edge(j, i)
+                        continue
+        return neighbor_graphs
 
-    def init_self(self):
+    def hill_climbing_based_causal_structure_search(self):
+        self.likelihood = self.compute_graph_likelihood(self.graph)
+        while True:
+            self.neighbor_graphs = self.search_neighbor_graphs(self.graph.graph)
+            likelihood_max_iter = [0, 0]
+            for i, graph_i in enumerate(self.neighbor_graphs):
+                likelihood = self.compute_graph_likelihood(Graph(graph_i))
+                likelihood_max_iter = [i, likelihood] if likelihood > likelihood_max_iter else likelihood_max_iter
 
-        pass
+            if self.likelihood < likelihood_max_iter[1]:
+                self.likelihood = likelihood_max_iter[1]
+                self.graph.graph = self.neighbor_graphs[likelihood_max_iter[0]]
+            else:
+                break
+
+
+
+
+
+
 
     def get_xgboost_model(self):
         model = XGBRegressor()
