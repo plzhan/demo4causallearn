@@ -268,6 +268,8 @@ def draw_graph(adj_matrix):
 
 if __name__ == '__main__':
     # x->y->z linear data
+       # |  （y有向指向z1）
+       # z1
     np.random.seed(0)
     x = np.random.normal(size=4000)
     y = 3 * x + np.random.uniform(-1, 1, size=4000) * 0.1
