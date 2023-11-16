@@ -55,7 +55,7 @@ def get_an_estimate_model(data, is_split=True, to_ward="forward", is_visualized=
     kernel = C(1.0, (1e-4, 1e4)) * RBF(10, (1e-3, 1e3)) + WhiteKernel(0.1, (1e-10, 1e+1))
     gp = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=0, random_state=42)
     if is_split:
-        X_train, X_test, y_train, y_test = train_test_split(data[:, :1], data[:, 1:], shuffle=True, test_size=.3,
+        X_train, X_test, y_train, y_test = train_test_split(data[:, :1], data[:, 1:], shuffle=True, test_size=.2,
                                                             random_state=42)
     else:
         X_train, y_train = data[:, :1], data[:, 1:]
