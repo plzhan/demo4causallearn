@@ -170,32 +170,32 @@ def multi_repetition(times, repetition_num, b, q, is_visualized, forward, backwa
 repetition_num = 100
 is_visualized = False
 
-# The first panel
-b = 0
-nums = np.arange(0.5, 2.001, 0.01)  # q
-proportion = []
-with ThreadPoolExecutor(max_workers=30) as executor:
-    start = time.time()
-    for q in nums:
-        q = round(q, 3)
-        times = 1
-        forward = 0
-        backward = 0
-        future = executor.submit(multi_repetition, times, repetition_num, b, q, is_visualized, forward, backward)
-    with tqdm(total=None, desc='Progress', unit='iteration') as pbar:
-        while not future.done():
-            pbar.update(1)
-            time.sleep(0.1)
-plt.figure()
-proportion.sort(key=lambda x: x[0])
-plt.plot(nums, np.array(proportion)[:, 1:2], 'k', label='correct')
-plt.plot(nums, np.array(proportion)[:, 2:], 'r', label='reverse')
-plt.xlabel('q')
-plt.ylabel('$p_{accept}$')
-plt.title(f'b = 0')
-plt.legend()
-plt.savefig(f'b0_q05-20_{repetition_num}times_KCI.jpg', dpi=200)
-plt.show()
+# # The first panel
+# b = 0
+# nums = np.arange(0.5, 2.001, 0.01)  # q
+# proportion = []
+# with ThreadPoolExecutor(max_workers=30) as executor:
+#     start = time.time()
+#     for q in nums:
+#         q = round(q, 3)
+#         times = 1
+#         forward = 0
+#         backward = 0
+#         future = executor.submit(multi_repetition, times, repetition_num, b, q, is_visualized, forward, backward)
+#     with tqdm(total=None, desc='Progress', unit='iteration') as pbar:
+#         while not future.done():
+#             pbar.update(1)
+#             time.sleep(0.1)
+# plt.figure()
+# proportion.sort(key=lambda x: x[0])
+# plt.plot(nums, np.array(proportion)[:, 1:2], 'k', label='correct')
+# plt.plot(nums, np.array(proportion)[:, 2:], 'r', label='reverse')
+# plt.xlabel('q')
+# plt.ylabel('$p_{accept}$')
+# plt.title(f'b = 0')
+# plt.legend()
+# plt.savefig(f'b0_q05-20_{repetition_num}times_KCI.jpg', dpi=200)
+# plt.show()
 
 # The second panel
 q = 1
@@ -222,6 +222,6 @@ plt.ylabel('$p_{accept}$')
 plt.title(f'q = 1')
 plt.legend()
 # plt.show()
-plt.savefig(f'q1_bn1-1_{repetition_num}times_KCI.jpg', dpi=200)
+plt.savefig(f'q1_bn1-1_{repetition_num}times_KCI_0.1.jpg', dpi=200)
 plt.show()
 
