@@ -5,7 +5,7 @@
 # @Time:         18:58  2023/11/2
 import warnings
 
-# warnings.filterwarnings("ignore")
+warnings.filterwarnings("ignore")
 from copy import deepcopy
 from tqdm import tqdm
 import threading
@@ -18,7 +18,9 @@ from sklearn.gaussian_process.kernels import RBF, WhiteKernel
 from sklearn.model_selection import train_test_split
 from Experiments.HSIC import hsic_gam
 from concurrent.futures import ThreadPoolExecutor
+from causallearn.utils.KCI.KCI import KCI_UInd
 
+kci = KCI_UInd()
 # create datas
 def create_simulated_data(m=300, b=1, q=1, is_visualized=True):
     def f(x):
@@ -91,7 +93,7 @@ def get_an_estimate_model(data, is_split=False, to_ward="forward", is_visualized
     return n_hat, X
 
 
-def ANM(data_, is_split=True, is_visualized=True):
+def ANM(data_, is_split=True, is_visualized=True, is_KCI=True):
     """
     this function is used as a model(ANM) to discovery the causality between x and y
     1, test whether x and y are statistically independent if not
@@ -100,6 +102,7 @@ def ANM(data_, is_split=True, is_visualized=True):
     4, test whether n_hat is dependent with x if so, accept; if not
     5, test whether the reverse model fits the data
 
+    KCI 的 p_value 越大表明没有足够证据拒绝原假设，原假设是独立 （接受独立）
     situation:
     1, independent
     2, both direction (x independent with n and so is y)
@@ -113,7 +116,12 @@ def ANM(data_, is_split=True, is_visualized=True):
     # print("data_shape, ", data.shape)
     # print("data1_shape, ", data1.shape)
     # 1, test whether x and y are statistically independent (kernel methods) if not
-    is_independent = hsic_gam(data[:, 1:], data[:, 1:])
+    if is_KCI:
+        p, _ = kci.compute_pvalue(data[:, 1:], data[:, 1:])
+        # print(p)
+        is_independent = True if p >= 0.02 else False
+    else:
+        is_independent = hsic_gam(data[:, 1:], data[:, 1:])
     if is_independent:
         result = "X is independent with Y"
         # print(result)
@@ -125,12 +133,20 @@ def ANM(data_, is_split=True, is_visualized=True):
     n_hat2, Y = get_an_estimate_model(data1, is_split, "backward", is_visualized=is_visualized)
 
     # 3, test whether n_hat is independent with x if so, accept; if not
-    is_independent1 = hsic_gam(X, n_hat1)
+    if is_KCI:
+        p, _ = kci.compute_pvalue(X, n_hat1)
+        is_independent1 = True if p >= 0.02 else False
+    else:
+        is_independent1 = hsic_gam(X, n_hat1)
     if is_independent1:
         result += " forward: | X -> Y |"
 
     # 4, test whether the reverse model fits the data
-    is_independent2 = hsic_gam(Y, n_hat2)
+    if is_KCI:
+        p, _ = kci.compute_pvalue(Y, n_hat2)
+        is_independent2 = True if p >= 0.02 else False
+    else:
+        is_independent2 = hsic_gam(Y, n_hat2)
     if is_independent2:
         result += " backward: | X <- Y |"
     # print(result)
@@ -151,14 +167,14 @@ def multi_repetition(times, repetition_num, b, q, is_visualized, forward, backwa
     proportion.append([q, round(forward/(repetition_num), 3), round(backward/(repetition_num), 3)])
 
 
-repetition_num = 20
+repetition_num = 100
+is_visualized = False
 
 # The first panel
-is_visualized = False
 b = 0
-nums = np.arange(0.5, 2.001, 0.1)  # q
+nums = np.arange(0.5, 2.001, 0.01)  # q
 proportion = []
-with ThreadPoolExecutor(max_workers=20) as executor:
+with ThreadPoolExecutor(max_workers=30) as executor:
     start = time.time()
     for q in nums:
         q = round(q, 3)
@@ -178,14 +194,14 @@ plt.xlabel('q')
 plt.ylabel('$p_{accept}$')
 plt.title(f'b = 0')
 plt.legend()
-plt.savefig('b0_q05-20.jpg', dpi=200)
+plt.savefig(f'b0_q05-20_{repetition_num}times_KCI.jpg', dpi=200)
 plt.show()
 
 # The second panel
 q = 1
-nums = np.arange(-1, 1.1, 0.1)
+nums = np.arange(-1, 1.1, 0.01)
 proportion = []
-with ThreadPoolExecutor(max_workers=20) as executor:
+with ThreadPoolExecutor(max_workers=30) as executor:
     for b in nums:
         b = round(b, 3)
         times = 1
@@ -206,6 +222,6 @@ plt.ylabel('$p_{accept}$')
 plt.title(f'q = 1')
 plt.legend()
 # plt.show()
-plt.savefig('q1_bn1-1.jpg', dpi=200)
+plt.savefig(f'q1_bn1-1_{repetition_num}times_KCI.jpg', dpi=200)
 plt.show()
 
