@@ -154,7 +154,7 @@ def ANM(data_, is_split=True, is_visualized=True, is_KCI=True):
 
 
 # Multi-treading
-def multi_repetition(times, repetition_num, b, q, is_visualized, forward, backward):
+def multi_repetition(times, repetition_num, b, q, sort_parameter,is_visualized, forward, backward):
     # print("表示我正在运行，", b, q)
     while times <= repetition_num:
         dataset = create_simulated_data(b=b, q=q, is_visualized=is_visualized)
@@ -164,7 +164,7 @@ def multi_repetition(times, repetition_num, b, q, is_visualized, forward, backwa
         if "backward" in result:
             backward += 1
         times += 1
-    proportion.append([q, round(forward/(repetition_num), 3), round(backward/(repetition_num), 3)])
+    proportion.append([sort_parameter, round(forward/repetition_num, 3), round(backward/repetition_num, 3)])
 
 
 repetition_num = 100
@@ -181,7 +181,7 @@ with ThreadPoolExecutor(max_workers=30) as executor:
         times = 1
         forward = 0
         backward = 0
-        future = executor.submit(multi_repetition, times, repetition_num, b, q, is_visualized, forward, backward)
+        future = executor.submit(multi_repetition, times, repetition_num, b, q, q,is_visualized, forward, backward)
     with tqdm(total=None, desc='Progress', unit='iteration') as pbar:
         while not future.done():
             pbar.update(1)
@@ -207,7 +207,7 @@ with ThreadPoolExecutor(max_workers=30) as executor:
         times = 1
         forward = 0
         backward = 0
-        future = executor.submit(multi_repetition, times, repetition_num, b, q, is_visualized, forward, backward)
+        future = executor.submit(multi_repetition, times, repetition_num, b, q, b,is_visualized, forward, backward)
     with tqdm(total=None, desc='Progress', unit='iteration') as pbar:
         while not future.done():
             pbar.update(1)
