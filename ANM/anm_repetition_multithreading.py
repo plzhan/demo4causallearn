@@ -164,6 +164,7 @@ def multi_repetition(times, repetition_num, b, q, sort_parameter,is_visualized, 
         if "backward" in result:
             backward += 1
         times += 1
+
     proportion.append([sort_parameter, round(forward/repetition_num, 3), round(backward/repetition_num, 3)])
 
 
